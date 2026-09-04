@@ -1,6 +1,6 @@
 {
   "name": "astro-drifter",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Astro-Drifter Desktop Edition",
   "author": "PittViper-Softworks",
   "main": "main.js",
@@ -19,7 +19,9 @@
           "name": "@electron-forge/maker-squirrel",
           "config": {
             "name": "astro_drifter",
-            "authors": "PittViper-Softworks"
+            "authors": "PittViper-Softworks",
+            "setupIcon": "icon.ico",
+            "iconUrl": "https://raw.githubusercontent.com/PittViper-Softworks/Astro-Drifter/main/icon.ico"
           }
         },
         {
