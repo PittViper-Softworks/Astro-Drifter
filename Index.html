@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Astro-Drifter: Save System Edition</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #050509;
+            color: #d0e0ff;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        h1 {
+            margin: 10px 0;
+            font-size: 28px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px #3498db;
+        }
+
+        #game-container {
+            position: relative;
+            box-shadow: 0 0 50px rgba(52, 152, 219, 0.3);
+            border: 2px solid #3498db;
+            border-radius: 12px;
+            overflow: hidden;
+            background: radial-gradient(circle at center, #1a1a2e 0%, #050509 100%);
+        }
+
+        canvas {
+            display: block;
+        }
+
+        /* Shop Modal Overlay */
+        #shop-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(5, 5, 15, 0.92);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+
+        .shop-title {
+            font-size: 24px;
+            color: #f1c40f;
+            text-shadow: 0 0 10px rgba(241, 196, 15, 0.5);
+            margin-bottom: 5px;
+        }
+
+        .credits-display {
+            font-size: 16px;
+            color: #2ecc71;
+            margin-bottom: 20px;
+        }
+
+        .shop-items {
+            display: flex;
+            gap: 15px;
+        }
+
+        .shop-card {
+            background: rgba(20, 30, 50, 0.8);
+            border: 2px solid #3498db;
+            border-radius: 8px;
+            padding: 15px;
+            width: 220px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .shop-card h3 {
+            margin: 0 0 10px 0;
+            font-size: 16px;
+            color: #fff;
+        }
+
+        .shop-card p {
+            font-size: 11px;
+            color: #aaa;
+            line-height: 1.4;
+            min-height: 45px;
+        }
+
+        .buy-btn {
+            background: #27ae60;
+            border: none;
+            color: white;
+            padding: 8px 12px;
+            font-family: inherit;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+
+        .buy-btn:hover { background: #2ecc71; }
+        .buy-btn.disabled { background: #555; cursor: not-allowed; }
+        .buy-btn.owned { background: #2980b9; cursor: default; }
+
+        .shop-actions {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .close-shop-btn {
+            background: #e74c3c;
+            border: none;
+            color: white;
+            padding: 8px 20px;
+            font-family: inherit;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        .reset-save-btn {
+            background: #7f8c8d;
+            border: none;
+            color: white;
+            padding: 8px 15px;
+            font-family: inherit;
+            font-size: 12px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .reset-save-btn:hover { background: #c0392b; }
+
+        .controls-hint {
+            margin-top: 15px;
+            font-size: 14px;
+            color: #889;
+            text-align: center;
+            line-height: 1.6;
+            max-width: 800px;
+        }
+
+        kbd {
+            background-color: #223;
+            border: 1px solid #445;
+            border-radius: 4px;
+            padding: 2px 6px;
+            font-size: 12px;
+            color: #fff;
+        }
+
+        .powerup-legend {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 10px;
+        }
+        .legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px;}
+        .dot { width: 12px; height: 12px; border-radius: 2px; }
+    </style>
+</head>
+<body>
+
+    <h1>Astro-Drifter</h1>
+    
+    <div id="game-container">
+        <canvas id="gameCanvas" width="1000" height="500"></canvas>
+        
+        <div id="shop-overlay">
+            <div class="shop-title">ARMORY & TECH SHOP</div>
+            <div class="credits-display" id="shop-credits">AVAILABLE CREDITS: 0</div>
+            <div class="shop-items">
+                <div class="shop-card">
+                    <h3>SHIELD EXOSUIT</h3>
+                    <p>Adds an Energy Barrier. Grants +1 extra hit before failing a run.</p>
+                    <button class="buy-btn" id="buy-shield" onclick="buyUpgrade('shield', 50)">BUY (50 CR)</button>
+                </div>
+                <div class="shop-card">
+                    <h3>TWIN PLASMA BLAST</h3>
+                    <p>Upgrades Plasma Cannon to shoot dual parallel lasers simultaneously.</p>
+                    <button class="buy-btn" id="buy-twin" onclick="buyUpgrade('twin', 100)">BUY (100 CR)</button>
+                </div>
+                <div class="shop-card">
+                    <h3>LUNAR THRUSTERS</h3>
+                    <p>Reduces global gravity and grants a 3rd air jump.</p>
+                    <button class="buy-btn" id="buy-gravity" onclick="buyUpgrade('gravity', 150)">BUY (150 CR)</button>
+                </div>
+            </div>
+            <div class="shop-actions">
+                <button class="close-shop-btn" onclick="toggleShop(false)">RETURN TO MISSION [E]</button>
+                <button class="reset-save-btn" onclick="clearSaveData()">RESET SAVE DATA</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="controls-hint">
+        <kbd>A</kbd>/<kbd>D</kbd> or <kbd>←</kbd>/<kbd>→</kbd> Move | <kbd>W</kbd>/<kbd>Space</kbd>/<kbd>↑</kbd> Jump | <kbd>S</kbd>/<kbd>↓</kbd> Drop | <kbd>J</kbd> Fire | <kbd>E</kbd> Shop<br>
+        <strong>Objective:</strong> Collect Data Cores for Credits. Progress auto-saves!
+        <div class="powerup-legend">
+            <div class="legend-item"><div class="dot" style="background:#f1c40f"></div>Data Core (+5 Credits)</div>
+            <div class="legend-item"><div class="dot" style="background:#e74c3c"></div>Plasma Cannon</div>
+            <div class="legend-item"><div class="dot" style="background:#e67e22"></div>Anti-Grav Boots</div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const VIEW_WIDTH = canvas.width;
+        const VIEW_HEIGHT = canvas.height;
+        let GRAVITY = 0.5;
+        const TERRAIN_COLOR = '#2c3e50';
+        const TERRAIN_TOP_COLOR = '#1abc9c';
+        const WALL_COLOR = '#7f8c8d';
+        
+        let score = 0;
+        let highScore = 0;
+        let credits = 0;
+        let difficulty = 1;
+        let gameOver = false;
+        let isShopOpen = false;
+        let cameraX = 0;
+        let endlessOffset = 0;
+
+        const shopUpgrades = {
+            shield: false,
+            twin: false,
+            gravity: false
+        };
+
+        // --- SAVE SYSTEM MECHANICS ---
+        function saveGame() {
+            const saveData = {
+                credits: credits,
+                highScore: highScore,
+                shopUpgrades: shopUpgrades
+            };
+            localStorage.setItem('astro_drifter_save', JSON.stringify(saveData));
+        }
+
+        function loadGame() {
+            const saved = localStorage.getItem('astro_drifter_save');
+            if (saved) {
+                try {
+                    const data = JSON.parse(saved);
+                    credits = data.credits || 0;
+                    highScore = data.highScore || 0;
+                    if (data.shopUpgrades) {
+                        shopUpgrades.shield = !!data.shopUpgrades.shield;
+                        shopUpgrades.twin = !!data.shopUpgrades.twin;
+                        shopUpgrades.gravity = !!data.shopUpgrades.gravity;
+                    }
+                    if (shopUpgrades.gravity) GRAVITY = 0.35;
+                } catch (e) {
+                    console.error("Could not parse save file", e);
+                }
+            }
+        }
+
+        function clearSaveData() {
+            if (confirm("Are you sure you want to erase all credits and suit upgrades?")) {
+                localStorage.removeItem('astro_drifter_save');
+                credits = 0;
+                highScore = 0;
+                shopUpgrades.shield = false;
+                shopUpgrades.twin = false;
+                shopUpgrades.gravity = false;
+                GRAVITY = 0.5;
+                updateShopUI();
+                resetGame();
+            }
+        }
+
+        const keys = { left: false, right: false, down: false };
+
+        window.addEventListener('keydown', e => {
+            if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', ' '].includes(e.key)) {
+                e.preventDefault();
+            }
+            if (['ArrowLeft', 'a', 'A'].includes(e.key)) keys.left = true;
+            if (['ArrowRight', 'd', 'D'].includes(e.key)) keys.right = true;
+            if (['ArrowDown', 's', 'S'].includes(e.key)) keys.down = true;
+            if (['ArrowUp', 'w', 'W', ' '].includes(e.key)) if (!e.repeat && !isShopOpen) player.handleJump();
+            if (['j', 'J'].includes(e.key)) if (!e.repeat && !isShopOpen) player.shoot();
+            if (['e', 'E', 'Tab'].includes(e.key)) if (!e.repeat) toggleShop();
+            if (gameOver && e.key.toLowerCase() === 'r' && !isShopOpen) resetGame();
+        });
+
+        window.addEventListener('keyup', e => {
+            if (['ArrowLeft', 'a', 'A'].includes(e.key)) keys.left = false;
+            if (['ArrowRight', 'd', 'D'].includes(e.key)) keys.right = false;
+            if (['ArrowDown', 's', 'S'].includes(e.key)) keys.down = false;
+        });
+
+        function toggleShop(forceState) {
+            isShopOpen = forceState !== undefined ? forceState : !isShopOpen;
+            document.getElementById('shop-overlay').style.display = isShopOpen ? 'flex' : 'none';
+            updateShopUI();
+        }
+
+        function buyUpgrade(type, cost) {
+            if (credits >= cost && !shopUpgrades[type]) {
+                credits -= cost;
+                shopUpgrades[type] = true;
+                if (type === 'gravity') GRAVITY = 0.35;
+                if (type === 'shield') player.shieldActive = true;
+                saveGame();
+                updateShopUI();
+            }
+        }
+
+        function updateShopUI() {
+            document.getElementById('shop-credits').innerText = `AVAILABLE CREDITS: ${credits}`;
+            
+            const btnShield = document.getElementById('buy-shield');
+            const btnTwin = document.getElementById('buy-twin');
+            const btnGrav = document.getElementById('buy-gravity');
+
+            if (shopUpgrades.shield) { btnShield.innerText = "EQUIPPED"; btnShield.className = "buy-btn owned"; }
+            else if (credits < 50) btnShield.className = "buy-btn disabled";
+            else btnShield.className = "buy-btn";
+
+            if (shopUpgrades.twin) { btnTwin.innerText = "EQUIPPED"; btnTwin.className = "buy-btn owned"; }
+            else if (credits < 100) btnTwin.className = "buy-btn disabled";
+            else btnTwin.className = "buy-btn";
+
+            if (shopUpgrades.gravity) { btnGrav.innerText = "EQUIPPED"; btnGrav.className = "buy-btn owned"; }
+            else if (credits < 150) btnGrav.className = "buy-btn disabled";
+            else btnGrav.className = "buy-btn";
+        }
+
+        class Player {
+            constructor() {
+                this.width = 24;
+                this.height = 38;
+                this.shieldActive = false;
+                this.reset();
+                this.color = '#ecf0f1';
+                this.visorColor = '#3498db';
+                this.speed = 5.5;
+                this.jumpForce = 12;
+            }
+
+            reset() {
+                this.x = 100;
+                this.y = 200;
+                this.vx = 0;
+                this.vy = 0;
+                this.grounded = false;
+                this.jumpsLeft = shopUpgrades.gravity ? 3 : 2;
+                this.facing = 'right';
+                this.touchingWallLeft = false;
+                this.touchingWallRight = false;
+                this.hasFirePower = false;
+                this.hasSuperJump = false;
+                this.dropTimer = 0;
+                this.shieldActive = shopUpgrades.shield;
+            }
+
+            handleJump() {
+                if (!this.grounded && this.touchingWallLeft) {
+                    this.vy = -this.jumpForce * 1.1;
+                    this.vx = this.speed * 1.6;
+                    this.jumpsLeft = shopUpgrades.gravity ? 2 : 1;
+                    return;
+                } else if (!this.grounded && this.touchingWallRight) {
+                    this.vy = -this.jumpForce * 1.1;
+                    this.vx = -this.speed * 1.6;
+                    this.jumpsLeft = shopUpgrades.gravity ? 2 : 1;
+                    return;
+                }
+
+                if (this.jumpsLeft > 0) {
+                    const force = this.hasSuperJump ? this.jumpForce * 1.4 : this.jumpForce;
+                    this.vy = -force;
+                    this.grounded = false;
+                    this.jumpsLeft--;
+                }
+            }
+
+            shoot() {
+                if (!this.hasFirePower || gameOver) return;
+                const pvx = this.facing === 'right' ? 12 : -12;
+                
+                if (shopUpgrades.twin) {
+                    activeWorld.projectiles.push(new Projectile(this.x + this.width/2, this.y + 8, pvx));
+                    activeWorld.projectiles.push(new Projectile(this.x + this.width/2, this.y + 24, pvx));
+                } else {
+                    activeWorld.projectiles.push(new Projectile(this.x + this.width/2, this.y + this.height/2, pvx));
+                }
+            }
+
+            draw(ctx, camX) {
+                const drawX = this.x - camX;
+                const drawY = this.y;
+                
+                ctx.save();
+                
+                ctx.fillStyle = this.color;
+                if (shopUpgrades.gravity) ctx.fillStyle = '#d5f5e3';
+                if (this.hasFirePower) ctx.fillStyle = '#ffcccc';
+                if (this.hasSuperJump) ctx.fillStyle = '#ffe0b3';
+                
+                this.roundRect(ctx, drawX, drawY, this.width, this.height, 6, true, false);
+
+                ctx.fillStyle = '#bdc3c7';
+                ctx.fillRect(drawX - 4, drawY + 8, 4, 22);
+
+                ctx.fillStyle = shopUpgrades.twin ? '#e74c3c' : this.visorColor;
+                const visorX = this.facing === 'right' ? drawX + 12 : drawX + 2;
+                ctx.fillRect(visorX, drawY + 6, 10, 12);
+                
+                ctx.fillStyle = 'rgba(255,255,255,0.3)';
+                ctx.fillRect(visorX + 2, drawY + 8, 3, 3);
+
+                ctx.fillStyle = this.hasSuperJump ? '#e67e22' : '#7f8c8d';
+                ctx.fillRect(drawX, drawY + this.height - 4, this.width, 4);
+
+                if (this.shieldActive) {
+                    ctx.strokeStyle = '#3498db';
+                    ctx.lineWidth = 2;
+                    ctx.shadowColor = '#3498db';
+                    ctx.shadowBlur = 8;
+                    ctx.beginPath();
+                    ctx.arc(drawX + this.width/2, drawY + this.height/2, 26, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.shadowBlur = 0;
+                }
+
+                ctx.restore();
+            }
+
+            roundRect(ctx, x, y, width, height, radius, fill, stroke) {
+                ctx.beginPath();
+                ctx.moveTo(x + radius, y);
+                ctx.lineTo(x + width - radius, y);
+                ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+                ctx.lineTo(x + width, y + height - radius);
+                ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+                ctx.lineTo(x + radius, y + height);
+                ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+                ctx.lineTo(x, y + radius);
+                ctx.quadraticCurveTo(x, y, x + radius, y);
+                ctx.closePath();
+                if (fill) ctx.fill();
+                if (stroke) ctx.stroke();
+            }
+        }
+
+        class Projectile {
+            constructor(x, y, vx) {
+                this.x = x; this.y = y; this.vx = vx;
+                this.width = 12; this.height = 6;
+                this.color = shopUpgrades.twin ? '#e74c3c' : '#3498db';
+            }
+            update() { this.x += this.vx; }
+            draw(ctx, camX) {
+                ctx.fillStyle = this.color;
+                ctx.shadowColor = this.color;
+                ctx.shadowBlur = 10;
+                ctx.fillRect(this.x - camX, this.y, this.width, this.height);
+                ctx.shadowBlur = 0;
+            }
+        }
+
+        class Enemy {
+            constructor(x, y, width, height, color) {
+                this.x = x; this.y = y;
+                this.width = width; this.height = height;
+                this.color = color;
+            }
+            update(player, platforms) {}
+            draw(ctx, camX) {}
+            checkAABB(other) {
+                return (this.x < other.x + other.width && this.x + this.width > other.x &&
+                        this.y < other.y + other.height && this.y + this.height > other.y);
+            }
+        }
+
+        class VoidCrab extends Enemy {
+            constructor(x, y, minX, maxX) {
+                super(x, y, 30, 20, '#9b59b6');
+                this.speed = 2 * difficulty;
+                this.minX = minX; this.maxX = maxX;
+            }
+            update() {
+                this.x += this.speed;
+                if (this.x <= this.minX || this.x + this.width >= this.maxX) this.speed *= -1;
+            }
+            draw(ctx, camX) {
+                const drawX = this.x - camX;
+                ctx.fillStyle = this.color;
+                ctx.beginPath(); ctx.ellipse(drawX + 15, this.y + 10, 15, 10, 0, 0, Math.PI * 2); ctx.fill();
+                ctx.strokeStyle = this.color; ctx.lineWidth = 3;
+                for(let i=0; i<3; i++){
+                    ctx.beginPath(); ctx.moveTo(drawX + 5 + i*10, this.y+15); ctx.lineTo(drawX + i*15, this.y+22); ctx.stroke();
+                }
+                ctx.fillStyle = '#00ff00'; ctx.fillRect(drawX + 10, this.y + 5, 3, 3); ctx.fillRect(drawX + 17, this.y + 5, 3, 3);
+            }
+        }
+
+        class NebulaFloater extends Enemy {
+            constructor(x, y) {
+                super(x, y, 25, 25, '#2ecc71');
+                this.startY = y;
+                this.t = Math.random() * 100;
+                this.amplitude = 40;
+            }
+            update() {
+                this.t += 0.05 * difficulty;
+                this.y = this.startY + Math.sin(this.t) * this.amplitude;
+            }
+            draw(ctx, camX) {
+                const drawX = this.x - camX;
+                ctx.fillStyle = this.color;
+                ctx.beginPath(); ctx.arc(drawX + 12, this.y + 10, 12, Math.PI, 0); ctx.fill();
+                ctx.fillRect(drawX+4, this.y+10, 16, 15);
+                ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fillRect(drawX+8, this.y+6, 8, 3);
+            }
+        }
+
+        class StarStalker extends Enemy {
+            constructor(x, y) {
+                super(x, y, 20, 35, '#e74c3c');
+                this.speed = 1.5 * difficulty;
+                this.detectRange = 300;
+            }
+            update(player, platforms) {
+                const dist = Math.abs(player.x - this.x);
+                if (dist < this.detectRange) {
+                    if (player.x > this.x) this.x += this.speed;
+                    else this.x -= this.speed;
+                }
+                this.y += 4;
+                platforms.forEach(p => {
+                    if (this.checkAABB(p)) this.y = p.y - this.height;
+                });
+            }
+            draw(ctx, camX) {
+                const drawX = this.x - camX;
+                ctx.fillStyle = this.color;
+                ctx.fillRect(drawX, this.y, this.width, this.height);
+                ctx.fillStyle = '#fff'; ctx.fillRect(drawX + 5, this.y + 6, 10, 10);
+                ctx.fillStyle = '#000'; ctx.fillRect(drawX + 8, this.y + 9, 4, 4);
+            }
+        }
+
+        class WorldObject {
+            constructor(x, y, width, height, color) {
+                this.x = x; this.y = y; this.width = width; this.height = height; this.color = color;
+                this.collected = false;
+            }
+            draw(ctx, camX) {}
+        }
+
+        class DataCore extends WorldObject {
+            constructor(x, y) { super(x, y, 16, 16, '#f1c40f'); }
+            draw(ctx, camX) {
+                if (this.collected) return;
+                const drawX = this.x - camX;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.moveTo(drawX+4, this.y); ctx.lineTo(drawX+12, this.y); ctx.lineTo(drawX+16, this.y+4); ctx.lineTo(drawX+16, this.y+12);
+                ctx.lineTo(drawX+12, this.y+16); ctx.lineTo(drawX+4, this.y+16); ctx.lineTo(drawX, this.y+12); ctx.lineTo(drawX, this.y+4);
+                ctx.closePath(); ctx.fill();
+                ctx.fillStyle = '#000'; ctx.font = 'bold 10px monospace'; ctx.fillText("C", drawX + 5, this.y + 12);
+            }
+        }
+
+        class Powerup extends WorldObject {
+            constructor(x, y, type) {
+                super(x, y, 20, 20, type === 'fire' ? '#e74c3c' : '#e67e22');
+                this.type = type;
+            }
+            draw(ctx, camX) {
+                if (this.collected) return;
+                const drawX = this.x - camX;
+                ctx.fillStyle = this.color;
+                ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+                ctx.fillRect(drawX, this.y, this.width, this.height);
+                ctx.strokeRect(drawX, this.y, this.width, this.height);
+                ctx.fillStyle = '#fff'; ctx.font = 'bold 14px monospace'; ctx.textAlign='center';
+                ctx.fillText(this.type === 'fire' ? 'P' : 'G', drawX + 10, this.y + 15);
+                ctx.textAlign='left';
+            }
+        }
+
+        const activeWorld = {
+            platforms: [],
+            enemies: [],
+            objects: [],
+            projectiles: []
+        };
+
+        function generateChunk(startX) {
+            const chunkWidth = 1000;
+            const floorY = VIEW_HEIGHT - 40;
+            
+            const floorGap = Math.random() < 0.3 * difficulty;
+            if (!floorGap) {
+                activeWorld.platforms.push({ x: startX, y: floorY, width: chunkWidth, height: 40, color: TERRAIN_COLOR, type: 'floor' });
+            } else {
+                const gapSize = 100 + Math.random() * 100;
+                const split = 300 + Math.random() * 400;
+                activeWorld.platforms.push({ x: startX, y: floorY, width: split, height: 40, color: TERRAIN_COLOR, type: 'floor' });
+                activeWorld.platforms.push({ x: startX + split + gapSize, y: floorY, width: chunkWidth - split - gapSize, height: 40, color: TERRAIN_COLOR, type: 'floor' });
+            }
+
+            const numObjects = 3 + Math.floor(Math.random() * 4);
+            for (let i = 0; i < numObjects; i++) {
+                const rx = startX + 50 + Math.random() * (chunkWidth - 150);
+                const ry = 150 + Math.random() * (VIEW_HEIGHT - 250);
+                
+                if (Math.random() < 0.2) {
+                    activeWorld.platforms.push({ x: rx, y: ry - 100, width: 30, height: 150, color: WALL_COLOR, type: 'wall' });
+                } else {
+                    const rw = 100 + Math.random() * 150;
+                    const platY = ry;
+                    activeWorld.platforms.push({ x: rx, y: platY, width: rw, height: 20, color: TERRAIN_COLOR, type: 'rock' });
+                    
+                    const spawnRnd = Math.random();
+                    if (spawnRnd < 0.5) {
+                        activeWorld.objects.push(new DataCore(rx + rw/2 - 8, platY - 25));
+                    } else if (spawnRnd < 0.75) {
+                        activeWorld.enemies.push(new VoidCrab(rx + 10, platY - 20, rx, rx + rw));
+                    } else if (spawnRnd < 0.85) {
+                        const type = Math.random() < 0.5 ? 'fire' : 'jump';
+                        activeWorld.objects.push(new Powerup(rx + rw/2 - 10, platY - 25, type));
+                    }
+                }
+            }
+
+            if (Math.random() < 0.5 * difficulty) {
+                const ex = startX + 200 + Math.random() * (chunkWidth - 400);
+                if (Math.random() < 0.6) activeWorld.enemies.push(new NebulaFloater(ex, 100 + Math.random() * 100));
+                else activeWorld.enemies.push(new StarStalker(ex, floorY - 35));
+            }
+
+            return chunkWidth;
+        }
+
+        const player = new Player();
+
+        function triggerGameOver() {
+            if (!gameOver) {
+                gameOver = true;
+                if (score > highScore) highScore = score;
+                saveGame();
+            }
+        }
+
+        function resetGame() {
+            score = 0;
+            difficulty = 1;
+            gameOver = false;
+            cameraX = 0;
+            endlessOffset = 0;
+            player.reset();
+            activeWorld.platforms = [];
+            activeWorld.enemies = [];
+            activeWorld.objects = [];
+            activeWorld.projectiles = [];
+            endlessOffset += generateChunk(0);
+            endlessOffset += generateChunk(endlessOffset);
+        }
+
+        function checkAABBCollision(rect1, rect2) {
+            return (rect1.x < rect2.x + rect2.width && rect1.x + rect1.width > rect2.x &&
+                    rect1.y < rect2.y + rect2.height && rect1.y + rect1.height > rect2.y);
+        }
+
+        function update() {
+            if (gameOver || isShopOpen) return;
+
+            if (keys.left) { player.vx = -player.speed; player.facing = 'left'; }
+            else if (keys.right) { player.vx = player.speed; player.facing = 'right'; }
+            else { player.vx *= 0.82; }
+
+            if (keys.down && player.grounded) {
+                player.dropTimer = 15;
+                player.grounded = false;
+                player.y += 6;
+            }
+
+            if (player.dropTimer > 0) {
+                player.dropTimer--;
+            }
+
+            player.vy += GRAVITY;
+
+            if ((player.touchingWallLeft || player.touchingWallRight) && !player.grounded && player.vy > 0) {
+                player.vy *= 0.8;
+            }
+
+            difficulty = 1 + (player.x / 5000);
+
+            if (player.x > endlessOffset - VIEW_WIDTH * 1.5) {
+                endlessOffset += generateChunk(endlessOffset);
+                activeWorld.platforms = activeWorld.platforms.filter(p => p.x + p.width > cameraX - 1000);
+            }
+
+            player.x += player.vx;
+            player.touchingWallLeft = false;
+            player.touchingWallRight = false;
+
+            activeWorld.platforms.forEach(platform => {
+                if (platform.type === 'rock') return;
+
+                if (checkAABBCollision(player, platform)) {
+                    if (player.vx > 0) { player.x = platform.x - player.width; player.touchingWallRight = true; }
+                    else if (player.vx < 0) { player.x = platform.x + platform.width; player.touchingWallLeft = true; }
+                    if (platform.type === 'wall') player.vx = 0;
+                }
+            });
+
+            if (player.x < cameraX) player.x = cameraX;
+
+            const prevY = player.y;
+            player.y += player.vy;
+            player.grounded = false;
+
+            activeWorld.platforms.forEach(platform => {
+                if (platform.type === 'rock') {
+                    if (player.dropTimer > 0 || player.vy < 0) return;
+
+                    const feetPrevY = prevY + player.height;
+                    const feetCurrY = player.y + player.height;
+
+                    if (feetPrevY <= platform.y + 6 && feetCurrY >= platform.y) {
+                        if (player.x + player.width > platform.x && player.x < platform.x + platform.width) {
+                            player.y = platform.y - player.height;
+                            player.vy = 0;
+                            player.grounded = true;
+                            player.jumpsLeft = shopUpgrades.gravity ? 3 : 2;
+                        }
+                    }
+                } else {
+                    if (checkAABBCollision(player, platform)) {
+                        if (player.vy > 0) {
+                            player.y = platform.y - player.height;
+                            player.vy = 0;
+                            player.grounded = true;
+                            player.jumpsLeft = shopUpgrades.gravity ? 3 : 2;
+                        } else if (player.vy < 0) {
+                            player.y = platform.y + platform.height;
+                            player.vy = 0;
+                        }
+                    }
+                }
+            });
+
+            for (let i = activeWorld.projectiles.length - 1; i >= 0; i--) {
+                const proj = activeWorld.projectiles[i];
+                proj.update();
+                let hitEnemy = false;
+                
+                for (let j = activeWorld.enemies.length - 1; j >= 0; j--) {
+                    const e = activeWorld.enemies[j];
+                    if (checkAABBCollision(proj, e)) {
+                        activeWorld.enemies.splice(j, 1);
+                        hitEnemy = true;
+                        score += 50;
+                        break;
+                    }
+                }
+
+                let hitPlatform = false;
+                activeWorld.platforms.forEach(plat => { 
+                    if (checkAABBCollision(proj, plat)) hitPlatform = true; 
+                });
+
+                if (hitEnemy || hitPlatform || proj.x > cameraX + VIEW_WIDTH + 100 || proj.x < cameraX - 100) {
+                    activeWorld.projectiles.splice(i, 1);
+                }
+            }
+
+            for (let i = activeWorld.enemies.length - 1; i >= 0; i--) {
+                const e = activeWorld.enemies[i];
+                e.update(player, activeWorld.platforms);
+
+                if (e.checkAABB(player)) {
+                    if (e instanceof VoidCrab && player.vy > 2 && player.y + player.height - player.vy <= e.y + 5) {
+                        activeWorld.enemies.splice(i, 1);
+                        player.vy = -player.jumpForce * 0.8;
+                        score += 30;
+                    } else {
+                        if (player.shieldActive) {
+                            player.shieldActive = false;
+                            activeWorld.enemies.splice(i, 1);
+                        } else {
+                            triggerGameOver();
+                        }
+                    }
+                }
+            }
+
+            activeWorld.objects.forEach(obj => {
+                if (!obj.collected && checkAABBCollision(player, obj)) {
+                    obj.collected = true;
+                    if (obj instanceof DataCore) {
+                        credits += 5;
+                        score += 10;
+                        saveGame();
+                    } else if (obj instanceof Powerup) {
+                        if (obj.type === 'fire') { player.hasFirePower = true; player.hasSuperJump = false; }
+                        else if (obj.type === 'jump') { player.hasSuperJump = true; player.hasFirePower = false; }
+                        score += 100;
+                    }
+                }
+            });
+
+            if (player.y > VIEW_HEIGHT + 100) triggerGameOver();
+
+            if (player.x > score) score = Math.floor(player.x);
+
+            const targetCamX = player.x - VIEW_WIDTH / 4;
+            cameraX += (targetCamX - cameraX) * 0.1;
+            cameraX = Math.max(0, cameraX);
+        }
+
+        function drawBackground(ctx, camX) {
+            const skyGrd = ctx.createLinearGradient(0, 0, 0, VIEW_HEIGHT);
+            skyGrd.addColorStop(0, "#050509");
+            skyGrd.addColorStop(1, "#1a1a2e");
+            ctx.fillStyle = skyGrd;
+            ctx.fillRect(0, 0, VIEW_WIDTH, VIEW_HEIGHT);
+
+            ctx.fillStyle = "#fff";
+            for(let i=0; i<50; i++) {
+                const sx = (i * 137 + camX * 0.1) % VIEW_WIDTH;
+                const sy = (i * 97) % (VIEW_HEIGHT * 0.7);
+                const size = i % 5 === 0 ? 2 : 1;
+                ctx.fillRect(sx, sy, size, size);
+            }
+
+            ctx.fillStyle = "#2c3e50";
+            ctx.beginPath(); ctx.arc(VIEW_WIDTH * 0.8 - camX*0.05, 80, 40, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = "rgba(0,0,0,0.3)";
+            ctx.beginPath(); ctx.arc(VIEW_WIDTH * 0.82 - camX*0.05, 70, 35, 0, Math.PI*2); ctx.fill();
+        }
+
+        function drawPlatforms(ctx, camX) {
+            activeWorld.platforms.forEach(p => {
+                const drawX = p.x - camX;
+                if (drawX + p.width < 0 || drawX > VIEW_WIDTH) return;
+
+                ctx.fillStyle = p.color;
+                ctx.fillRect(drawX, p.y, p.width, p.height);
+                
+                if (p.type === 'floor' || p.type === 'rock') {
+                    ctx.fillStyle = TERRAIN_TOP_COLOR;
+                    ctx.shadowColor = TERRAIN_TOP_COLOR;
+                    ctx.shadowBlur = 5;
+                    ctx.fillRect(drawX, p.y, p.width, 4);
+                    ctx.shadowBlur = 0;
+                } else if (p.type === 'wall') {
+                    ctx.strokeStyle = "rgba(255,255,255,0.1)"; ctx.lineWidth = 1;
+                    for(let x=0; x<p.width; x+=10) ctx.strokeRect(drawX + x, p.y, 1, p.height);
+                    for(let y=0; y<p.height; y+=10) ctx.strokeRect(drawX, p.y + y, p.width, 1);
+                }
+            });
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, VIEW_WIDTH, VIEW_HEIGHT);
+
+            drawBackground(ctx, cameraX);
+            drawPlatforms(ctx, cameraX);
+
+            activeWorld.objects.forEach(obj => obj.draw(ctx, cameraX));
+            activeWorld.projectiles.forEach(p => p.draw(ctx, cameraX));
+            activeWorld.enemies.forEach(e => e.draw(ctx, cameraX));
+            
+            player.draw(ctx, cameraX);
+
+            ctx.fillStyle = "#d0e0ff";
+            ctx.font = "bold 18px monospace";
+            ctx.fillText(`DISTANCE: ${score}`, 20, 35);
+            
+            ctx.fillStyle = "#f1c40f";
+            ctx.fillText(`CREDITS: ${credits}`, 220, 35);
+
+            ctx.fillStyle = "#2ecc71";
+            ctx.fillText(`BEST: ${highScore}`, 400, 35);
+            
+            ctx.font = "14px monospace";
+            let powerStr = "STANDARD SUIT";
+            ctx.fillStyle = "#aaa";
+            if (player.hasFirePower) { powerStr = "PLASMA CANNON [J]"; ctx.fillStyle = "#e74c3c"; }
+            else if (player.hasSuperJump) { powerStr = "ANTI-GRAV BOOTS"; ctx.fillStyle = "#e67e22"; }
+            ctx.fillText(`SYSTEM: ${powerStr}`, 20, 60);
+
+            ctx.fillStyle = "#3498db";
+            ctx.fillText(`[E] ARMORY SHOP`, VIEW_WIDTH - 180, 35);
+
+            if (gameOver) {
+                ctx.fillStyle = "rgba(0, 0, 0, 0.85)";
+                ctx.fillRect(0, 0, VIEW_WIDTH, VIEW_HEIGHT);
+                ctx.fillStyle = "#e74c3c";
+                ctx.font = "bold 48px monospace";
+                ctx.textAlign = "center";
+                ctx.fillText("CRITICAL FAILURE", VIEW_WIDTH / 2, VIEW_HEIGHT / 2 - 20);
+                ctx.fillStyle = "#fff";
+                ctx.font = "20px monospace";
+                ctx.fillText(`Final Distance: ${score} units | Best: ${highScore}`, VIEW_WIDTH / 2, VIEW_HEIGHT / 2 + 30);
+                ctx.fillText("Press R to Reboot | Press E to Visit Shop", VIEW_WIDTH / 2, VIEW_HEIGHT / 2 + 60);
+                ctx.textAlign = "left";
+            }
+        }
+
+        function loop() {
+            update();
+            draw();
+            requestAnimationFrame(loop);
+        }
+
+        loadGame();
+        resetGame();
+        loop();
+    </script>
+</body>
+</html>

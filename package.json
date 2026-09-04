@@ -1,0 +1,43 @@
+{
+  "name": "astro-drifter",
+  "version": "1.0.0",
+  "description": "Astro-Drifter Desktop Edition",
+  "author": "PittViper-Softworks",
+  "main": "main.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/PittViper-Softworks/Astro-Drifter.git"
+  },
+  "scripts": {
+    "start": "electron .",
+    "make": "electron-forge make"
+  },
+  "config": {
+    "forge": {
+      "makers": [
+        {
+          "name": "@electron-forge/maker-squirrel",
+          "config": {
+            "name": "astro_drifter",
+            "authors": "PittViper-Softworks"
+          }
+        },
+        {
+          "name": "@electron-forge/maker-zip",
+          "platforms": [
+            "win32"
+          ]
+        }
+      ]
+    }
+  },
+  "devDependencies": {
+    "@electron-forge/cli": "^7.3.0",
+    "@electron-forge/maker-squirrel": "^7.3.0",
+    "@electron-forge/maker-zip": "^7.3.0",
+    "electron": "^29.0.0"
+  },
+  "dependencies": {
+    "update-electron-app": "^3.0.0"
+  }
+}
