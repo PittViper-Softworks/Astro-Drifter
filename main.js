@@ -1,7 +1,8 @@
 const { app, BrowserWindow } = require('electron');
 const path = require('path');
+const { updateElectronApp } = require('update-electron-app');
 
-require('update-electron-app')();
+updateElectronApp();
 
 function createWindow() {
     const win = new BrowserWindow({
@@ -9,8 +10,8 @@ function createWindow() {
         height: 576,
         resizable: true,
         useContentSize: true,
-        autoHideMenuBar: true, // Hides the default browser menu bar
-        icon: path.join(__dirname, 'icon.ico'), // Links your custom icon
+        autoHideMenuBar: true,
+        icon: path.join(__dirname, 'icon.ico'),
         webPreferences: {
             nodeIntegration: false,
             contextIsolation: true
