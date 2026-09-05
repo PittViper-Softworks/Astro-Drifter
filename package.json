@@ -21,7 +21,9 @@
             "name": "astro_drifter",
             "authors": "PittViper-Softworks",
             "setupIcon": "icon.ico",
-            "iconUrl": "https://raw.githubusercontent.com/PittViper-Softworks/Astro-Drifter/main/icon.ico"
+            "iconUrl": "https://raw.githubusercontent.com/PittViper-Softworks/Astro-Drifter/main/icon.ico",
+            "createDesktopShortcut": true,
+            "createStartMenuShortcut": true
           }
         },
         {
