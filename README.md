@@ -1,0 +1,1 @@
+> **Windows SmartScreen Notice:** When running the installer, Windows may display a "Windows protected your PC" popup because this is an independently published application. To proceed safely, simply click the **More info** link on the warning screen, and then click the **Run anyway** button that appears below it.
